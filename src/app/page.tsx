@@ -1,66 +1,306 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import { 
+  Code2, 
+  Layout, 
+  Smartphone, 
+  BarChart3, 
+  Fingerprint, 
+  PhoneCall,
+  ArrowRight,
+  ExternalLink,
+  MessageCircle
+} from "lucide-react";
 
 export default function Home() {
+  const services = [
+    {
+      title: "Web Design & e-Commerce",
+      description: "Bespoke, conversion-optimized storefronts and brand profiles that scale with your business.",
+      icon: <Layout className="w-8 h-8 text-cyan-400" />,
+    },
+    {
+      title: "Software Development",
+      description: "Custom ERP solutions and automation tools tailored to streamline your specific operations.",
+      icon: <Code2 className="w-8 h-8 text-purple-400" />,
+    },
+    {
+      title: "Mobile App Development",
+      description: "High-performance iOS and Android applications built for speed and user engagement.",
+      icon: <Smartphone className="w-8 h-8 text-blue-400" />,
+    },
+    {
+      title: "Digital Marketing",
+      description: "Strategic Google and Facebook Ads combined with SEO to bring the right audience to you.",
+      icon: <BarChart3 className="w-8 h-8 text-pink-400" />,
+    },
+    {
+      title: "Brand Identity",
+      description: "Professional logo design and visual systems that make your business stick in memory.",
+      icon: <Fingerprint className="w-8 h-8 text-indigo-400" />,
+    },
+    {
+      title: "Cloud Telephony",
+      description: "Modernize your office communication with scalable and flexible cloud-based systems.",
+      icon: <PhoneCall className="w-8 h-8 text-emerald-400" />,
+    },
+  ];
+
+  const clients = [
+    { name: "Country Farm Organics", src: "/client-logo/Country-Farm-Organics-Logo.png" },
+    { name: "KyKidsCA", src: "/client-logo/KyKidsCA_Round_Logo.png" },
+    { name: "APM", src: "/client-logo/Logo_APM-1.png" },
+    { name: "CMF Global", src: "/client-logo/cmf-logo.png" },
+    { name: "EA Detailer", src: "/client-logo/eadetailer-logo-silver-03.png" },
+    { name: "IGP", src: "/client-logo/igp_main_logo.png" },
+    { name: "Lolo", src: "/client-logo/logo-lolo-1.png" },
+    { name: "TalentHouz", src: "/client-logo/talenthouz-logo.png" },
+  ];
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Creativate Studio",
+    "image": "https://creativatestudio.my/logo.png",
+    "@id": "",
+    "url": "https://creativatestudio.my",
+    "telephone": "+60173565462",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "B2-2-3, 1, Jln Dutamas 1, Solaris Dutamas",
+      "addressLocality": "Kuala Lumpur",
+      "addressRegion": "Wilayah Persekutuan",
+      "postalCode": "50480",
+      "addressCountry": "MY"
+    },
+    "openingHoursSpecification": {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday"
+      ],
+      "opens": "09:00",
+      "closes": "18:00"
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      {/* Navigation */}
+      <nav style={{ 
+        position: 'fixed', 
+        top: 0, 
+        width: '100%', 
+        zIndex: 100, 
+        padding: '24px 0',
+        background: 'rgba(10, 10, 12, 0.8)',
+        backdropFilter: 'blur(10px)',
+        borderBottom: '1px solid var(--glass-border)'
+      }}>
+        <div className="container nav-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+            <img 
+              src="/logo.png" 
+              alt="Creativate Studio" 
+              style={{ 
+                height: '60px', 
+                width: 'auto',
+                filter: 'brightness(1.1) drop-shadow(0 0 15px rgba(255,255,255,0.1))'
+              }} 
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </Link>
+          <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+            <Link href="#services" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Services</Link>
+            <Link href="#portfolio" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Portfolio</Link>
+            <Link href="https://wa.me/60173565462" className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MessageCircle size={16} /> <span className="mobile-hide">WhatsApp Us</span><span style={{ display: 'none' }} className="mobile-show">WhatsApp</span>
+            </Link>
+          </div>
         </div>
-      </main>
-    </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section style={{ 
+        padding: '180px 0 120px', 
+        textAlign: 'center',
+        background: 'radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 50%)'
+      }}>
+        <div className="container animate-slide">
+          <div style={{ 
+            display: 'inline-block', 
+            padding: '8px 16px', 
+            borderRadius: '100px', 
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--glass-border)',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            marginBottom: '24px',
+            color: 'var(--accent-secondary)'
+          }}>
+            8+ YEARS OF DIGITAL EXCELLENCE
+          </div>
+          <h1 style={{ fontSize: 'clamp(2.5rem, 8vw, 5rem)', maxWidth: '900px', margin: '0 auto 24px' }}>
+            Innovating Digital Growth for <span className="gradient-text">Malaysian SMEs</span>
+          </h1>
+          <p style={{ 
+            fontSize: 'clamp(1rem, 2vw, 1.25rem)', 
+            color: 'var(--text-secondary)', 
+            maxWidth: '600px', 
+            margin: '0 auto 40px' 
+          }}>
+            We build high-performance websites, custom software, and digital strategies that transform how you do business.
+          </p>
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="https://wa.me/60173565462" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Start Your Project <ArrowRight size={18} />
+            </Link>
+            <Link href="#portfolio" className="glass-card" style={{ padding: '16px 32px', borderRadius: '50px', fontSize: '1rem', fontWeight: 600 }}>
+              View Our Work
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Services Section */}
+      <section id="services" style={{ padding: 'var(--section-padding)' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '60px' }} className="animate-fade">
+            <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: '16px' }}>Our Expertise</h2>
+            <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto' }}>
+              From initial design to complex custom software, we provide end-to-end digital solutions.
+            </p>
+          </div>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+            gap: '24px' 
+          }}>
+            {services.map((service, index) => (
+              <div key={index} className="glass-card animate-slide" style={{ display: 'flex', flexDirection: 'column', gap: '20px', animationDelay: `${index * 0.1}s` }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '16px', 
+                  background: 'rgba(255, 255, 255, 0.05)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  {service.icon}
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '12px' }}>{service.title}</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>{service.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Markers / Portfolio Section */}
+      <section id="portfolio" style={{ padding: 'var(--section-padding)', background: 'var(--bg-secondary)' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+            <h2 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: '16px' }}>Trusted by Local Businesses</h2>
+            <p style={{ color: 'var(--text-secondary)' }}>Delivering digital excellence for Malaysian SMEs.</p>
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            gap: '40px', 
+          }}>
+            {clients.map((client, index) => (
+              <div key={index} style={{ 
+                width: '140px', 
+                height: '80px', 
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s ease'
+              }} className="client-logo">
+                <img 
+                  src={client.src} 
+                  alt={client.name} 
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '100%', 
+                    objectFit: 'contain' 
+                  }} 
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer Section */}
+      <footer style={{ padding: '80px 0 40px', borderTop: '1px solid var(--glass-border)' }}>
+        <div className="container">
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: '40px',
+            marginBottom: '60px'
+          }}>
+            <div>
+              <div style={{ marginBottom: '20px' }}>
+                <img 
+                  src="/logo.png" 
+                  alt="Creativate Studio" 
+                  style={{ 
+                    height: '48px', 
+                    width: 'auto',
+                    filter: 'brightness(1.1) drop-shadow(0 0 15px rgba(255,255,255,0.1))'
+                  }} 
+                />
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                Professional digital agency specializing in web development, custom software, and business automation for the Malaysian market.
+              </p>
+            </div>
+            <div>
+              <h4 style={{ marginBottom: '20px' }}>Services</h4>
+              <ul style={{ listStyle: 'none', color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <li>Web Development</li>
+                <li>ERP Solutions</li>
+                <li>Mobile Apps</li>
+                <li>SEO & Marketing</li>
+              </ul>
+            </div>
+            <div>
+              <h4 style={{ marginBottom: '20px' }}>Contact</h4>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.5' }}>
+                B2-2-3, 1, Jln Dutamas 1,<br />
+                Solaris Dutamas, 50480 Kuala Lumpur,<br />
+                Wilayah Persekutuan Kuala Lumpur
+              </p>
+              <Link href="https://wa.me/60173565462" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-secondary)', fontWeight: 600 }}>
+                WhatsApp Us <ExternalLink size={14} />
+              </Link>
+            </div>
+          </div>
+          <div style={{ 
+            textAlign: 'center', 
+            paddingTop: '40px', 
+            borderTop: '1px solid var(--glass-border)',
+            color: 'var(--text-secondary)',
+            fontSize: '0.8rem'
+          }}>
+            © {new Date().getFullYear()} Creativate Studio. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </main>
   );
 }
