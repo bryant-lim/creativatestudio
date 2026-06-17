@@ -1035,8 +1035,8 @@ export default function Chatbot() {
                       fontSize: "0.85rem",
                       transition: "border-color 0.2s",
                       resize: "none",
-                      minHeight: "38px",
-                      maxHeight: "100px",
+                      minHeight: "60px",
+                      maxHeight: "120px",
                       lineHeight: "1.4",
                       fontFamily: "inherit",
                     }}

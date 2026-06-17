@@ -180,9 +180,17 @@ export default function Home() {
             We build high-performance websites, custom software, and digital strategies that transform how you do business.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="https://t.me/bryantlim" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button 
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("welly-ai-open"));
+                }
+              }}
+              className="btn-primary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', border: 'none' }}
+            >
               Start Your Project <ArrowRight size={18} />
-            </Link>
+            </button>
             <Link href="#portfolio" className="glass-card" style={{ padding: '16px 32px', borderRadius: '50px', fontSize: '1rem', fontWeight: 600 }}>
               View Our Work
             </Link>
