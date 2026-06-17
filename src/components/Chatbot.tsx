@@ -6,6 +6,8 @@ import { MessageCircle, X, Send, Loader2, Sparkles, Phone, ArrowLeft, Bot, User,
 interface Message {
   role: "user" | "assistant";
   content: string;
+  showDetailsForm?: boolean;
+  showQuickReplies?: boolean;
 }
 
 export default function Chatbot() {
@@ -22,6 +24,12 @@ export default function Chatbot() {
 
   // Inactivity session state
   const [isSessionEnded, setIsSessionEnded] = useState(false);
+  const [sessionEndReason, setSessionEndReason] = useState<"inactivity" | "completed" | null>(null);
+
+  // Temporary details state for inline verification
+  const [tempName, setTempName] = useState("");
+  const [tempPhone, setTempPhone] = useState("");
+  const [tempEmail, setTempEmail] = useState("");
 
   // Inactivity timeout configuration (360000ms = 6 minutes)
   const INACTIVITY_TIMEOUT_MS = 360000;
@@ -44,7 +52,7 @@ export default function Chatbot() {
   const [isSendingLead, setIsSendingLead] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,6 +67,7 @@ export default function Chatbot() {
   // Handle inactivity timeout triggers
   const handleInactivityTimeout = async () => {
     setIsSessionEnded(true);
+    setSessionEndReason("inactivity");
     
     // Only send summary if user had typed something
     const userHasMessaged = messages.some((m) => m.role === "user");
@@ -130,17 +139,26 @@ export default function Chatbot() {
     setCustomerEmail("");
     setHasStarted(false);
     setIsSessionEnded(false);
+    setSessionEndReason(null);
     setShowLeadForm(false);
     setLeadSubmitted(false);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading || isSessionEnded) return;
+  const handleSendMessage = async (e: React.FormEvent | null, customValue?: string) => {
+    if (e) e.preventDefault();
+    
+    const valueToUse = customValue !== undefined ? customValue : inputValue;
+    if (!valueToUse.trim() || isLoading || isSessionEnded) return;
 
-    const userMessage: Message = { role: "user", content: inputValue };
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
+    const userMessage: Message = { role: "user", content: valueToUse };
+    const cleanPrevMessages = messages.map(msg => ({
+      ...msg,
+      showDetailsForm: false,
+      showQuickReplies: false
+    }));
+    const updatedMessages = [...cleanPrevMessages, userMessage];
+    setMessages(updatedMessages);
+    if (customValue === undefined) setInputValue("");
     setIsLoading(true);
 
     try {
@@ -150,7 +168,7 @@ export default function Chatbot() {
         body: JSON.stringify({
           action: "chat",
           clientName: customerName,
-          messages: [...messages, userMessage],
+          messages: updatedMessages,
         }),
       });
 
@@ -158,7 +176,43 @@ export default function Chatbot() {
       const data = await response.json();
 
       if (data.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+        const finalMessages = [...updatedMessages, {
+          role: "assistant" as const,
+          content: data.reply,
+          showDetailsForm: data.isPreClosure,
+          showQuickReplies: data.isFinalClosure,
+        }];
+        setMessages(finalMessages);
+
+        if (data.isPreClosure) {
+          setTempName(customerName);
+          setTempPhone(customerPhone);
+          setTempEmail(customerEmail);
+        }
+
+        if (data.isClosureComplete) {
+          setIsSessionEnded(true);
+          setSessionEndReason("completed");
+          // Automatically submit lead details for standard completion
+          try {
+            await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "lead",
+                leadInfo: {
+                  name: customerName,
+                  phone: customerPhone,
+                  email: customerEmail,
+                  message: "Conversation completed successfully.",
+                },
+                messages: finalMessages,
+              }),
+            });
+          } catch (err) {
+            console.error("Auto-lead submission error on completion:", err);
+          }
+        }
       } else {
         throw new Error(data.error || "Unknown error");
       }
@@ -177,6 +231,53 @@ export default function Chatbot() {
         inputRef.current?.focus();
       }, 50);
     }
+  };
+
+  const handleConfirmDetails = async (messageIndex: number) => {
+    if (!tempName.trim() || !tempPhone.trim()) {
+      alert("Please fill in Name and Phone.");
+      return;
+    }
+
+    if (tempEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(tempEmail.trim())) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
+
+    setCustomerName(tempName);
+    setCustomerPhone(tempPhone);
+    setCustomerEmail(tempEmail);
+
+    setMessages((prev) =>
+      prev.map((msg, idx) =>
+        idx === messageIndex ? { ...msg, showDetailsForm: false } : msg
+      )
+    );
+
+    try {
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lead",
+          leadInfo: {
+            name: tempName,
+            phone: tempPhone,
+            email: tempEmail,
+            message: "User verified and updated contact details.",
+          },
+          messages: messages,
+        }),
+      });
+    } catch (err) {
+      console.error("Error submitting verified lead:", err);
+    }
+
+    const confirmationText = `My details are correct: Name: ${tempName}, Phone: ${tempPhone}${tempEmail ? `, Email: ${tempEmail}` : ""}.`;
+    await handleSendMessage(null, confirmationText);
   };
 
   const handleOpenCallBackForm = () => {
@@ -685,6 +786,143 @@ export default function Chatbot() {
                         }}
                       >
                         {msg.content}
+
+                        {/* Inline Contact details verification form */}
+                        {msg.showDetailsForm && (
+                          <div style={{
+                            marginTop: "12px",
+                            padding: "12px",
+                            background: "rgba(255, 255, 255, 0.03)",
+                            border: "1px solid var(--glass-border)",
+                            borderRadius: "12px",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                            textAlign: "left"
+                          }}>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 600 }}>Verify Contact Details:</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.65rem", color: "var(--text-secondary)" }}>Name</label>
+                              <input
+                                type="text"
+                                value={tempName}
+                                onChange={(e) => setTempName(e.target.value)}
+                                style={{
+                                  padding: "6px 10px",
+                                  background: "rgba(0, 0, 0, 0.2)",
+                                  border: "1px solid var(--glass-border)",
+                                  borderRadius: "6px",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.65rem", color: "var(--text-secondary)" }}>Phone</label>
+                              <input
+                                type="text"
+                                value={tempPhone}
+                                onChange={(e) => {
+                                  const filtered = e.target.value.replace(/\D/g, "").slice(0, 12);
+                                  setTempPhone(filtered);
+                                }}
+                                style={{
+                                  padding: "6px 10px",
+                                  background: "rgba(0, 0, 0, 0.2)",
+                                  border: "1px solid var(--glass-border)",
+                                  borderRadius: "6px",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <label style={{ fontSize: "0.65rem", color: "var(--text-secondary)" }}>Email (Optional)</label>
+                              <input
+                                type="email"
+                                value={tempEmail}
+                                onChange={(e) => setTempEmail(e.target.value)}
+                                style={{
+                                  padding: "6px 10px",
+                                  background: "rgba(0, 0, 0, 0.2)",
+                                  border: "1px solid var(--glass-border)",
+                                  borderRadius: "6px",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmDetails(index)}
+                              className="btn-primary"
+                              style={{
+                                marginTop: "6px",
+                                padding: "8px",
+                                fontSize: "0.75rem",
+                                borderRadius: "6px",
+                                border: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Confirm details is correct
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Quick Replies for Final Closure */}
+                        {msg.showQuickReplies && (
+                          <div style={{
+                            marginTop: "12px",
+                            display: "flex",
+                            gap: "8px",
+                            flexWrap: "wrap"
+                          }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSendMessage(null, "No, thank you")}
+                              style={{
+                                padding: "8px 12px",
+                                background: "rgba(139, 92, 246, 0.15)",
+                                border: "1px solid rgba(139, 92, 246, 0.3)",
+                                borderRadius: "10px",
+                                color: "white",
+                                fontSize: "0.75rem",
+                                cursor: "pointer",
+                                transition: "background 0.2s",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(139, 92, 246, 0.3)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(139, 92, 246, 0.15)")}
+                            >
+                              No, thank you
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMessages((prev) =>
+                                  prev.map((m, idx) =>
+                                    idx === index ? { ...m, showQuickReplies: false } : m
+                                  )
+                                );
+                                setTimeout(() => inputRef.current?.focus(), 50);
+                              }}
+                              style={{
+                                padding: "8px 12px",
+                                background: "rgba(255, 255, 255, 0.05)",
+                                border: "1px solid var(--glass-border)",
+                                borderRadius: "10px",
+                                color: "white",
+                                fontSize: "0.75rem",
+                                cursor: "pointer",
+                                transition: "background 0.2s",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)")}
+                            >
+                              Yes, I have another question
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -700,8 +938,8 @@ export default function Chatbot() {
                   <div
                     style={{
                       padding: "12px",
-                      background: "rgba(239, 68, 68, 0.06)",
-                      border: "1px dashed rgba(239, 68, 68, 0.2)",
+                      background: sessionEndReason === "completed" ? "rgba(16, 185, 129, 0.06)" : "rgba(239, 68, 68, 0.06)",
+                      border: sessionEndReason === "completed" ? "1px dashed rgba(16, 185, 129, 0.2)" : "1px dashed rgba(239, 68, 68, 0.2)",
                       borderRadius: "14px",
                       textAlign: "center",
                       fontSize: "0.8rem",
@@ -714,11 +952,19 @@ export default function Chatbot() {
                       marginTop: "10px"
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#ef4444", fontWeight: 600 }}>
-                      <Clock size={14} /> Session Closed
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: sessionEndReason === "completed" ? "#10b981" : "#ef4444", fontWeight: 600 }}>
+                      {sessionEndReason === "completed" ? (
+                        <>✓ Conversation Completed</>
+                      ) : (
+                        <><Clock size={14} /> Session Closed</>
+                      )}
                     </div>
                     <span>
-                      Chat closed due to 5 minutes of inactivity. You can review your messages above.
+                      {sessionEndReason === "completed" ? (
+                        "Conversation Completed. Our team will contact you soonest!"
+                      ) : (
+                        'Chat closed due to 5 minutes of inactivity. Kindly "Start New Chat" so we can assist you.'
+                      )}
                     </span>
                   </div>
                 )}
@@ -763,15 +1009,21 @@ export default function Chatbot() {
                     alignItems: "center",
                   }}
                 >
-                  <input
+                  <textarea
                     ref={inputRef}
-                    type="text"
                     placeholder="Ask a question..."
                     value={inputValue}
                     onChange={(e) => {
                       setInputValue(e.target.value);
                       resetInactivityTimer();
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
+                    rows={1}
                     style={{
                       flex: 1,
                       padding: "10px 14px",
@@ -782,6 +1034,11 @@ export default function Chatbot() {
                       outline: "none",
                       fontSize: "0.85rem",
                       transition: "border-color 0.2s",
+                      resize: "none",
+                      minHeight: "38px",
+                      maxHeight: "100px",
+                      lineHeight: "1.4",
+                      fontFamily: "inherit",
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = "var(--accent-primary)";

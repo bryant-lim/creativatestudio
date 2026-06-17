@@ -5,8 +5,13 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "",
 });
 
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 const SYSTEM_PROMPT = `
-You are Welly AI, the friendly and helpful AI assistant for Creativate Studio, a professional digital agency based in Malaysia specializing in web development, custom CRM development, digital marketing, and support.
+You are Welly AI, the friendly and helpful AI assistant for Creativate Studio, a professional digital agency based in Malaysia specializing in web development, custom CRM development, AI Chatbots & Automation, digital marketing, and support.
 Your goal is to answer customer enquiries accurately and consultatively.
 
 CONSTRAINTS & RULES:
@@ -15,7 +20,13 @@ CONSTRAINTS & RULES:
 3. WEB DESIGN, e-COMMERCE, or BRAND IDENTITY: Ask if they have any reference/inspiration websites. Check their business background (industry and vertical) and ask why they need this (are they facing any current issues?).
 4. DIGITAL MARKETING: Ask if they have run ads before, on which platforms, what their next goal is, and their business vertical.
 5. TECH SUPPORT & MAINTENANCE: Ask what existing system/platform (e.g., WordPress, Next.js, custom PHP) they are currently using, and if they are facing any active issues.
-6. TONE & STYLE: Polite, humanized, conversational, and tailored to local Malaysian business style. Show genuine care in understanding their business needs.
+6. AUTOMATION: If asked about automation, consult and answer specifically in the area of AI Chatbots & Automation. Do not default to CRM automation unless the customer explicitly mentions CRM.
+7. CONVERSATION CLOSURE FLOW:
+   - PHASE 1: PRE-CLOSURE: Once you have gathered all necessary information (requirements, contact details, business vertical, budget/timeline) and are ready to finish, you MUST reply exactly: 'I will get my team to contact you regarding your requirements. Can you please verify if the contact details is correct?' and append the tag [PRE_CLOSURE] to the end. Do not write any other text.
+   - PHASE 2: FINAL CLOSURE: Once the user confirms the details are correct or submits them, reply exactly: 'Thanks. Is there anything else I can assist you with?' and append the tag [FINAL_CLOSURE].
+   - PHASE 3: CLOSURE COMPLETION: If the user replies negatively (e.g., 'no', 'nothing else', 'no thanks', 'thank you'), reply exactly: 'Thank you for contacting us. Have a nice day!' and append the tag [CLOSURE_COMPLETE].
+   - RESUME CHAT: If at any point during pre-closure or final closure the user asks a new question or changes the topic, resume the normal conversation and answer their questions normally without appending any closure tags.
+8. TONE & STYLE: Polite, humanized, conversational, and tailored to local Malaysian business style. Show genuine care in understanding their business needs.
 
 OFFICIAL DETAILS:
 - Address: Solaris Dutamas, Kuala Lumpur
@@ -69,7 +80,7 @@ export async function POST(request: Request) {
       if (messages && messages.length > 0) {
         try {
           const chatHistoryText = messages
-            .map((m: any) => `${m.role === "user" ? "Client" : "AI"}: ${m.content}`)
+            .map((m: ChatMessage) => `${m.role === "user" ? "Client" : "AI"}: ${m.content}`)
             .join("\n");
 
           const summaryCompletion = await groq.chat.completions.create({
@@ -130,15 +141,32 @@ Strict Rules:
           role: "system", 
           content: SYSTEM_PROMPT + (body.clientName ? `\nYou are chatting with ${body.clientName}. Greet them by name in your responses when appropriate.` : "")
         },
-        ...messages.map((m: any) => ({ role: m.role, content: m.content })),
+        ...messages.map((m: ChatMessage) => ({ role: m.role, content: m.content })),
       ],
       model: "llama-3.3-70b-versatile",
       temperature: 0.6,
     });
 
-    const reply = chatCompletion.choices[0]?.message?.content || "I apologize, I am unable to answer right now. Please message us on Telegram!";
-    return NextResponse.json({ reply });
-  } catch (error: any) {
+    let reply = chatCompletion.choices[0]?.message?.content || "I apologize, I am unable to answer right now. Please message us on Telegram!";
+    let isPreClosure = false;
+    let isFinalClosure = false;
+    let isClosureComplete = false;
+
+    if (reply.includes("[PRE_CLOSURE]")) {
+      isPreClosure = true;
+      reply = reply.replace("[PRE_CLOSURE]", "").trim();
+    }
+    if (reply.includes("[FINAL_CLOSURE]")) {
+      isFinalClosure = true;
+      reply = reply.replace("[FINAL_CLOSURE]", "").trim();
+    }
+    if (reply.includes("[CLOSURE_COMPLETE]")) {
+      isClosureComplete = true;
+      reply = reply.replace("[CLOSURE_COMPLETE]", "").trim();
+    }
+
+    return NextResponse.json({ reply, isPreClosure, isFinalClosure, isClosureComplete });
+  } catch (error) {
     console.error("Error in Chat API Route:", error);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
