@@ -1,14 +1,15 @@
 import Link from "next/link";
+import Chatbot from "@/components/Chatbot";
 import { 
   Code2, 
   Layout, 
   Smartphone, 
   BarChart3, 
   Fingerprint, 
-  PhoneCall,
+  LifeBuoy,
   ArrowRight,
   ExternalLink,
-  MessageCircle
+  Send
 } from "lucide-react";
 
 export default function Home() {
@@ -20,7 +21,7 @@ export default function Home() {
     },
     {
       title: "Software Development",
-      description: "Custom ERP solutions and automation tools tailored to streamline your specific operations.",
+      description: "Custom CRM and automation workflows tailored to streamline your specific operations.",
       icon: <Code2 className="w-8 h-8 text-purple-400" />,
     },
     {
@@ -39,9 +40,9 @@ export default function Home() {
       icon: <Fingerprint className="w-8 h-8 text-indigo-400" />,
     },
     {
-      title: "Cloud Telephony",
-      description: "Modernize your office communication with scalable and flexible cloud-based systems.",
-      icon: <PhoneCall className="w-8 h-8 text-emerald-400" />,
+      title: "Technical Support & Maintenance",
+      description: "Dedicated technical assistance and regular maintenance for your digital platforms and systems, letting you focus entirely on growing your business.",
+      icon: <LifeBuoy className="w-8 h-8 text-emerald-400" />,
     },
   ];
 
@@ -61,9 +62,14 @@ export default function Home() {
     "@type": "ProfessionalService",
     "name": "Creativate Studio",
     "image": "https://creativatestudio.my/logo.png",
-    "@id": "",
+    "@id": "https://creativatestudio.my/#organization",
     "url": "https://creativatestudio.my",
     "telephone": "+60173565462",
+    "description": "Professional digital agency specializing in web development, custom CRM development, digital marketing, and technical support & maintenance services for Malaysian businesses.",
+    "areaServed": "MY",
+    "sameAs": [
+      "https://t.me/bryantlim"
+    ],
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "B2-2-3, 1, Jln Dutamas 1, Solaris Dutamas",
@@ -119,8 +125,8 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
             <Link href="#services" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Services</Link>
             <Link href="#portfolio" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Portfolio</Link>
-            <Link href="https://wa.me/60173565462" className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <MessageCircle size={16} /> <span className="mobile-hide">WhatsApp Us</span><span style={{ display: 'none' }} className="mobile-show">WhatsApp</span>
+            <Link href="https://t.me/bryantlim" className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Send size={16} /> <span className="mobile-hide">Telegram Us</span><span style={{ display: 'none' }} className="mobile-show">Telegram</span>
             </Link>
           </div>
         </div>
@@ -158,7 +164,7 @@ export default function Home() {
             We build high-performance websites, custom software, and digital strategies that transform how you do business.
           </p>
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="https://wa.me/60173565462" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Link href="https://t.me/bryantlim" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               Start Your Project <ArrowRight size={18} />
             </Link>
             <Link href="#portfolio" className="glass-card" style={{ padding: '16px 32px', borderRadius: '50px', fontSize: '1rem', fontWeight: 600 }}>
@@ -285,8 +291,8 @@ export default function Home() {
                 Solaris Dutamas, 50480 Kuala Lumpur,<br />
                 Wilayah Persekutuan Kuala Lumpur
               </p>
-              <Link href="https://wa.me/60173565462" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-secondary)', fontWeight: 600 }}>
-                WhatsApp Us <ExternalLink size={14} />
+              <Link href="https://t.me/bryantlim" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-secondary)', fontWeight: 600 }}>
+                Telegram Us <ExternalLink size={14} />
               </Link>
             </div>
           </div>
@@ -301,6 +307,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      <Chatbot />
     </main>
   );
 }
