@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Chatbot from "@/components/Chatbot";
 import { 
@@ -5,11 +7,11 @@ import {
   Layout, 
   Smartphone, 
   BarChart3, 
-  Fingerprint, 
+  Bot, 
   LifeBuoy,
   ArrowRight,
   ExternalLink,
-  Send
+  MessageCircle
 } from "lucide-react";
 
 export default function Home() {
@@ -35,9 +37,9 @@ export default function Home() {
       icon: <BarChart3 className="w-8 h-8 text-pink-400" />,
     },
     {
-      title: "Brand Identity",
-      description: "Professional logo design and visual systems that make your business stick in memory.",
-      icon: <Fingerprint className="w-8 h-8 text-indigo-400" />,
+      title: "AI Chatbots & Automation",
+      description: "Custom AI assistants and conversational agents trained on your business data to answer customer enquiries and capture leads 24/7.",
+      icon: <Bot className="w-8 h-8 text-indigo-400" />,
     },
     {
       title: "Technical Support & Maintenance",
@@ -55,6 +57,12 @@ export default function Home() {
     { name: "IGP", src: "/client-logo/igp_main_logo.png" },
     { name: "Lolo", src: "/client-logo/logo-lolo-1.png" },
     { name: "TalentHouz", src: "/client-logo/talenthouz-logo.png" },
+    { name: "UTS", src: "/client-logo/uts-logo.png" },
+    { name: "Smart Maths", src: "/client-logo/smart-maths-logo.png" },
+    { name: "Conceptine", src: "/client-logo/conceptine-logo.png" },
+    { name: "MAPCOT", src: "/client-logo/mapcot-logo.png" },
+    { name: "Windscreen2U", src: "/client-logo/windscreen2u-logo.jpg" },
+    { name: "Zemlya Clinic", src: "/client-logo/zemlya-clinic-logo.png" },
   ];
 
   const jsonLd = {
@@ -65,7 +73,7 @@ export default function Home() {
     "@id": "https://creativatestudio.my/#organization",
     "url": "https://creativatestudio.my",
     "telephone": "+60173565462",
-    "description": "Professional digital agency specializing in web development, custom CRM development, digital marketing, and technical support & maintenance services for Malaysian businesses.",
+    "description": "Professional digital agency specializing in custom AI chatbots & automation, web development, custom CRM/ERP development, digital marketing, and tech support for Malaysian businesses.",
     "areaServed": "MY",
     "sameAs": [
       "https://t.me/bryantlim"
@@ -125,9 +133,17 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
             <Link href="#services" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Services</Link>
             <Link href="#portfolio" className="mobile-hide" style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Portfolio</Link>
-            <Link href="https://t.me/bryantlim" className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Send size={16} /> <span className="mobile-hide">Telegram Us</span><span style={{ display: 'none' }} className="mobile-show">Telegram</span>
-            </Link>
+            <button 
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("welly-ai-open"));
+                }
+              }} 
+              className="btn-primary" 
+              style={{ padding: '8px 20px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', border: 'none' }}
+            >
+              <MessageCircle size={16} /> <span className="mobile-hide">Talk to Us</span><span style={{ display: 'none' }} className="mobile-show">Talk</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -223,18 +239,21 @@ export default function Home() {
             flexWrap: 'wrap', 
             justifyContent: 'center', 
             alignItems: 'center',
-            gap: '40px', 
+            gap: '24px', 
           }}>
             {clients.map((client, index) => (
               <div key={index} style={{ 
-                width: '140px', 
-                height: '80px', 
-                position: 'relative',
+                width: '160px', 
+                height: '90px', 
+                padding: '16px',
+                background: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.3s ease'
-              }} className="client-logo">
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+              }} className="client-logo-card">
                 <img 
                   src={client.src} 
                   alt={client.name} 
@@ -291,9 +310,7 @@ export default function Home() {
                 Solaris Dutamas, 50480 Kuala Lumpur,<br />
                 Wilayah Persekutuan Kuala Lumpur
               </p>
-              <Link href="https://t.me/bryantlim" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-secondary)', fontWeight: 600 }}>
-                Telegram Us <ExternalLink size={14} />
-              </Link>
+              {/* Telegram Us link removed */}
             </div>
           </div>
           <div style={{ 

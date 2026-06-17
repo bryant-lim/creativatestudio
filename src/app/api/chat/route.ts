@@ -6,35 +6,21 @@ const groq = new Groq({
 });
 
 const SYSTEM_PROMPT = `
-You are Welly AI, the AI assistant for Creativate Studio, a professional digital agency based in Malaysia specializing in web development, custom CRM development, and digital marketing.
-Your goal is to answer customer enquiries accurately, professionally, and ground your answers in our official services and details.
+You are Welly AI, the friendly and helpful AI assistant for Creativate Studio, a professional digital agency based in Malaysia specializing in web development, custom CRM development, digital marketing, and support.
+Your goal is to answer customer enquiries accurately and consultatively.
+
+CONSTRAINTS & RULES:
+1. RESPONSE LENGTH: Your reply MUST be very short and direct—strictly between 200 to 350 characters. Long paragraphs are not allowed.
+2. PRICING: If asked about pricing for ANY service, explain that accurate pricing can only be provided after understanding their project requirements. Then, immediately ask if they can share their budget and timeline.
+3. WEB DESIGN, e-COMMERCE, or BRAND IDENTITY: Ask if they have any reference/inspiration websites. Check their business background (industry and vertical) and ask why they need this (are they facing any current issues?).
+4. DIGITAL MARKETING: Ask if they have run ads before, on which platforms, what their next goal is, and their business vertical.
+5. TECH SUPPORT & MAINTENANCE: Ask what existing system/platform (e.g., WordPress, Next.js, custom PHP) they are currently using, and if they are facing any active issues.
+6. TONE & STYLE: Polite, humanized, conversational, and tailored to local Malaysian business style. Show genuine care in understanding their business needs.
 
 OFFICIAL DETAILS:
-- Name: Creativate Studio
-- Years of Experience: 8+ years of digital excellence
-- Address: B2-2-3, 1, Jln Dutamas 1, Solaris Dutamas, 50480 Kuala Lumpur, Wilayah Persekutuan
-- Telegram Support: @bryantlim (Telegram link: https://t.me/bryantlim)
-- Official Email: hello@creativatestudio.my
-
-SERVICES:
-1. Web Design & e-Commerce: Bespoke, conversion-optimized storefronts and brand profiles that scale.
-2. Software Development: Custom CRM and automation workflows tailored to streamline specific operations.
-3. Mobile App Development: High-performance iOS and Android applications built for speed and engagement.
-4. Digital Marketing: Strategic Google and Facebook Ads combined with SEO to drive traffic.
-5. Brand Identity: Professional logo design and visual systems.
-6. Technical Support & Maintenance: Dedicated technical assistance, regular updates, and security monitoring for digital platforms and systems.
-
-UPSELLING STRATEGY:
-- If a customer inquires about Web Design/e-Commerce: Consultatively explain how a "Technical Support & Maintenance" plan protects their investment against security exploits and keeps plugins up to date.
-- If a customer inquires about Custom CRM/Software Development: Suggest combining it with "Digital Marketing" (specifically SEO/Google Ads) to acquire new users, or "Technical Support & Maintenance" to handle continuous bug fixes and server backups.
-- If a customer inquires about Mobile App Development: Suggest "Software Development" for building a robust admin CRM panel to manage users and view analytics.
-- If a customer inquires about Brand Identity: Suggest "Web Design" to showcase their new brand with a stunning modern website.
-Ensure the upsell feels like helpful consulting rather than a hard sales pitch.
-
-COMMUNICATION STYLE:
-- Polite, professional, structured, and informative.
-- Keep responses concise (under 3 paragraphs).
-- Direct them to leave their contact details or click "Request Call Back" in the chat widget if they want a direct quote, custom consultation, or want our team to call them.
+- Address: Solaris Dutamas, Kuala Lumpur
+- Telegram Support: @bryantlim (https://t.me/bryantlim)
+- Email: hello@creativatestudio.my
 `;
 
 async function sendTelegramMessage(text: string) {
@@ -58,6 +44,10 @@ async function sendTelegramMessage(text: string) {
         parse_mode: "HTML",
       }),
     });
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Telegram API Error response:", response.status, errText);
+    }
     return response.ok;
   } catch (error) {
     console.error("Failed to send Telegram message:", error);
@@ -72,7 +62,7 @@ export async function POST(request: Request) {
 
     if (action === "lead") {
       const { leadInfo } = body;
-      const { name, contact, message } = leadInfo;
+      const { name, phone, email, message } = leadInfo;
 
       // Generate a chat summary using Groq
       let summary = "No chat history provided.";
@@ -86,14 +76,18 @@ export async function POST(request: Request) {
             messages: [
               {
                 role: "system",
-                content: "Summarize this client chat conversation in 2-3 sentences, focusing on their business needs and project details.",
+                content: `You are a professional business summary assistant. Summarize the provided chat transcript in 2-3 sentences.
+Strict Rules:
+- Focus on the customer's actual business goals, industry/vertical, and project details.
+- If they mention websites or brands (e.g. "Zus Coffee") as reference or inspiration, explicitly state they are references. Do NOT assume or state that the client owns or runs these reference brands unless they explicitly state so.
+- Be factual and objective. Do not extrapolate or guess details.`,
               },
               {
                 role: "user",
                 content: chatHistoryText,
               },
             ],
-            model: "llama3-8b-8192",
+            model: "llama-3.1-8b-instant",
             temperature: 0.3,
           });
           summary = summaryCompletion.choices[0]?.message?.content || "Could not generate summary.";
@@ -105,14 +99,16 @@ export async function POST(request: Request) {
       // Format Telegram message
       const telegramText = `<b>🚀 New Lead Captured!</b>\n\n` +
         `<b>Name:</b> ${name}\n` +
-        `<b>Contact:</b> ${contact}\n` +
+        `<b>Phone:</b> ${phone}\n` +
+        `<b>Email:</b> ${email || "N/A"}\n` +
         `<b>User Message:</b> ${message || "N/A"}\n\n` +
         `<b>Conversation Summary:</b>\n<i>${summary}</i>`;
 
       // Log summary to server console (Option 1)
       console.log("================= NEW LEAD =================");
       console.log(`Name: ${name}`);
-      console.log(`Contact: ${contact}`);
+      console.log(`Phone: ${phone}`);
+      console.log(`Email: ${email || "N/A"}`);
       console.log(`User Message: ${message}`);
       console.log(`Chat Summary: ${summary}`);
       console.log("============================================");
@@ -130,7 +126,10 @@ export async function POST(request: Request) {
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { 
+          role: "system", 
+          content: SYSTEM_PROMPT + (body.clientName ? `\nYou are chatting with ${body.clientName}. Greet them by name in your responses when appropriate.` : "")
+        },
         ...messages.map((m: any) => ({ role: m.role, content: m.content })),
       ],
       model: "llama-3.3-70b-versatile",

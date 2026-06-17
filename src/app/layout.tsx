@@ -6,12 +6,15 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "600", "700"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://creativatestudio.my"),
-  title: "Creativate Studio | Innovating Digital Growth for SMEs",
-  description: "Bespoke web design, custom software development, digital marketing, and technical support & maintenance services for Malaysian businesses.",
+  title: "Creativate Studio | AI Chatbots, Web Development & CRM for SMEs",
+  description: "Malaysian digital agency specializing in bespoke web design, custom CRM & ERP software, mobile apps, AI chatbots & automation, and tech support for SMEs.",
   keywords: [
+    "AI Chatbots Malaysia",
+    "AI Automation Agency Kuala Lumpur",
     "Web Design Malaysia",
     "Custom Software Development",
     "Custom CRM Development",
+    "Mobile App Development Malaysia",
     "Website Maintenance Services Malaysia",
     "System Support & Maintenance",
     "Digital Marketing Agency Kuala Lumpur",
@@ -21,8 +24,8 @@ export const metadata: Metadata = {
     canonical: "https://creativatestudio.my",
   },
   openGraph: {
-    title: "Creativate Studio | Innovating Digital Growth for SMEs",
-    description: "Bespoke web design, custom software development, digital marketing, and technical support & maintenance services for Malaysian businesses.",
+    title: "Creativate Studio | AI Chatbots, Web Development & CRM for SMEs",
+    description: "Malaysian digital agency specializing in bespoke web design, custom CRM & ERP software, mobile apps, AI chatbots & automation, and tech support for SMEs.",
     url: "https://creativatestudio.my",
     siteName: "Creativate Studio",
     locale: "en_MY",
@@ -38,8 +41,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Creativate Studio | Innovating Digital Growth for SMEs",
-    description: "Bespoke web design, custom software development, digital marketing, and technical support & maintenance services for Malaysian businesses.",
+    title: "Creativate Studio | AI Chatbots, Web Development & CRM for SMEs",
+    description: "Malaysian digital agency specializing in bespoke web design, custom CRM & ERP software, mobile apps, AI chatbots & automation, and tech support for SMEs.",
     images: ["/logo.png"],
   },
   icons: {

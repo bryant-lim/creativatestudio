@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Sparkles, Phone, ArrowLeft, Bot, User } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Sparkles, Phone, ArrowLeft, Bot, User, Clock } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -10,38 +10,133 @@ interface Message {
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hi there! 👋 I'm Welly AI, how can i help you today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Onboarding pre-chat states
+  const [hasStarted, setHasStarted] = useState(false);
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+
+  // Inactivity session state
+  const [isSessionEnded, setIsSessionEnded] = useState(false);
+
+  // Inactivity timeout configuration (360000ms = 6 minutes)
+  const INACTIVITY_TIMEOUT_MS = 360000;
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen for external open trigger
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    window.addEventListener("welly-ai-open", handleOpen);
+    return () => window.removeEventListener("welly-ai-open", handleOpen);
+  }, []);
 
   // Lead capture form state
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [leadName, setLeadName] = useState("");
-  const [leadContact, setLeadContact] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
   const [leadMessage, setLeadMessage] = useState("");
   const [leadSubmitted, setLeadSubmitted] = useState(false);
   const [isSendingLead, setIsSendingLead] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && hasStarted) {
       scrollToBottom();
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, hasStarted]);
+
+  // Handle inactivity timeout triggers
+  const handleInactivityTimeout = async () => {
+    setIsSessionEnded(true);
+    
+    // Only send summary if user had typed something
+    const userHasMessaged = messages.some((m) => m.role === "user");
+    if (!userHasMessaged) return;
+
+    try {
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "lead",
+          leadInfo: {
+            name: customerName,
+            phone: customerPhone,
+            email: customerEmail,
+            message: "Chat closed automatically due to 5 minutes of inactivity.",
+          },
+          messages: messages,
+        }),
+      });
+    } catch (err) {
+      console.error("Auto-lead submission error on timeout:", err);
+    }
+  };
+
+  const resetInactivityTimer = () => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    if (isOpen && hasStarted && !isSessionEnded) {
+      inactivityTimerRef.current = setTimeout(handleInactivityTimeout, INACTIVITY_TIMEOUT_MS);
+    }
+  };
+
+  useEffect(() => {
+    resetInactivityTimer();
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+    };
+  }, [messages, isOpen, hasStarted, isSessionEnded]);
+
+  const handleStartOnboarding = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim() || !customerPhone.trim()) return;
+
+    if (customerEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(customerEmail.trim())) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
+
+    setMessages([
+      {
+        role: "assistant",
+        content: `Hi ${customerName}! 👋 I'm Welly AI, how can I help you today?`,
+      },
+    ]);
+    setHasStarted(true);
+  };
+
+  const startNewChatSession = () => {
+    setMessages([]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerEmail("");
+    setHasStarted(false);
+    setIsSessionEnded(false);
+    setShowLeadForm(false);
+    setLeadSubmitted(false);
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isSessionEnded) return;
 
     const userMessage: Message = { role: "user", content: inputValue };
     setMessages((prev) => [...prev, userMessage]);
@@ -54,6 +149,7 @@ export default function Chatbot() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "chat",
+          clientName: customerName,
           messages: [...messages, userMessage],
         }),
       });
@@ -77,12 +173,32 @@ export default function Chatbot() {
       ]);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
     }
+  };
+
+  const handleOpenCallBackForm = () => {
+    setLeadName(customerName);
+    setLeadPhone(customerPhone);
+    setLeadEmail(customerEmail);
+    setLeadMessage("");
+    setShowLeadForm(true);
+    setLeadSubmitted(false);
   };
 
   const handleLeadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!leadName.trim() || !leadContact.trim() || isSendingLead) return;
+    if (!leadName.trim() || !leadPhone.trim() || isSendingLead) return;
+
+    if (leadEmail.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(leadEmail.trim())) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
 
     setIsSendingLead(true);
     try {
@@ -93,7 +209,8 @@ export default function Chatbot() {
           action: "lead",
           leadInfo: {
             name: leadName,
-            contact: leadContact,
+            phone: leadPhone,
+            email: leadEmail,
             message: leadMessage || "Requested a callback from chatbot.",
           },
           messages: messages,
@@ -102,9 +219,9 @@ export default function Chatbot() {
 
       if (response.ok) {
         setLeadSubmitted(true);
-        setLeadName("");
-        setLeadContact("");
-        setLeadMessage("");
+        setCustomerName(leadName);
+        setCustomerPhone(leadPhone);
+        setCustomerEmail(leadEmail);
       } else {
         throw new Error("Failed to send lead details");
       }
@@ -197,38 +314,134 @@ export default function Chatbot() {
                   width: "10px",
                   height: "10px",
                   borderRadius: "50%",
-                  background: "#10b981",
+                  background: isSessionEnded ? "#ef4444" : hasStarted ? "#10b981" : "#e4e4e7",
                 }}
               />
               <span style={{ fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "6px" }}>
                 Welly AI <Sparkles size={14} style={{ color: "var(--accent-secondary)" }} />
               </span>
             </div>
-            <button
-              onClick={() => {
-                setShowLeadForm(!showLeadForm);
-                setLeadSubmitted(false);
-              }}
-              style={{
-                background: "rgba(255, 255, 255, 0.05)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--accent-secondary)",
-                padding: "6px 12px",
-                borderRadius: "12px",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <Phone size={12} /> Call Back
-            </button>
+            {hasStarted && !isSessionEnded && (
+              <button
+                onClick={handleOpenCallBackForm}
+                style={{
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--accent-secondary)",
+                  padding: "6px 12px",
+                  borderRadius: "12px",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <Phone size={12} /> Call Back
+              </button>
+            )}
           </div>
 
-          {/* Lead Capture Form Mode */}
-          {showLeadForm ? (
+          {/* Body Panels */}
+          {!hasStarted ? (
+            /* CASE 1: Pre-chat Onboarding Form */
+            <form
+              onSubmit={handleStartOnboarding}
+              style={{
+                flex: 1,
+                padding: "24px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                overflowY: "auto",
+              }}
+            >
+              <div>
+                <h4 style={{ fontSize: "1.1rem", marginBottom: "6px" }}>Welcome!</h4>
+                <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", lineHeight: "1.4" }}>
+                  Please share your name and contact details to begin chatting with Welly AI.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Your Name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  style={{
+                    padding: "12px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: "12px",
+                    color: "white",
+                    fontSize: "0.85rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Phone *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 60123456789"
+                  value={customerPhone}
+                  onChange={(e) => {
+                    const filtered = e.target.value.replace(/\D/g, "").slice(0, 12);
+                    setCustomerPhone(filtered);
+                  }}
+                  style={{
+                    padding: "12px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: "12px",
+                    color: "white",
+                    fontSize: "0.85rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Email (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="e.g. hello@creativatestudio.my"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  style={{
+                    padding: "12px 14px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    border: "1px solid var(--glass-border)",
+                    borderRadius: "12px",
+                    color: "white",
+                    fontSize: "0.85rem",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{
+                  marginTop: "10px",
+                  padding: "14px",
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                  border: "none",
+                }}
+              >
+                Start Chatting
+              </button>
+            </form>
+          ) : showLeadForm ? (
+            /* CASE 2: Lead Callback Form */
             <div
               style={{
                 flex: 1,
@@ -298,7 +511,7 @@ export default function Chatbot() {
                 <form onSubmit={handleLeadSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   <h4 style={{ fontSize: "1rem", marginBottom: "4px" }}>Request a Callback</h4>
                   <p style={{ color: "var(--text-secondary)", fontSize: "0.8rem", marginBottom: "10px", lineHeight: "1.4" }}>
-                    Leave your contact details and our team will get in touch to discuss your project.
+                    Confirm your details below to submit a direct enquiry to our team.
                   </p>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -322,13 +535,35 @@ export default function Chatbot() {
                   </div>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Phone / Email *</label>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Phone *</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. +60123456789 or email@domain.com"
-                      value={leadContact}
-                      onChange={(e) => setLeadContact(e.target.value)}
+                      placeholder="e.g. 60123456789"
+                      value={leadPhone}
+                      onChange={(e) => {
+                        const filtered = e.target.value.replace(/\D/g, "").slice(0, 12);
+                        setLeadPhone(filtered);
+                      }}
+                      style={{
+                        padding: "10px 14px",
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid var(--glass-border)",
+                        borderRadius: "12px",
+                        color: "white",
+                        fontSize: "0.85rem",
+                        outline: "none",
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Email (Optional)</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. hello@creativatestudio.my"
+                      value={leadEmail}
+                      onChange={(e) => setLeadEmail(e.target.value)}
                       style={{
                         padding: "10px 14px",
                         background: "rgba(255, 255, 255, 0.05)",
@@ -382,7 +617,7 @@ export default function Chatbot() {
               )}
             </div>
           ) : (
-            /* Standard Messaging Mode */
+            /* CASE 3: Messaging Mode */
             <>
               {/* Messages Body */}
               <div
@@ -460,79 +695,141 @@ export default function Chatbot() {
                     <span style={{ fontSize: "0.8rem" }}>AI typing...</span>
                   </div>
                 )}
+                
+                {isSessionEnded && (
+                  <div
+                    style={{
+                      padding: "12px",
+                      background: "rgba(239, 68, 68, 0.06)",
+                      border: "1px dashed rgba(239, 68, 68, 0.2)",
+                      borderRadius: "14px",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                      color: "var(--text-secondary)",
+                      lineHeight: "1.4",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "6px",
+                      marginTop: "10px"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#ef4444", fontWeight: 600 }}>
+                      <Clock size={14} /> Session Closed
+                    </div>
+                    <span>
+                      Chat closed due to 5 minutes of inactivity. You can review your messages above.
+                    </span>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Form */}
-              <form
-                onSubmit={handleSendMessage}
-                style={{
-                  padding: "14px 20px",
-                  borderTop: "1px solid var(--glass-border)",
-                  background: "rgba(255, 255, 255, 0.02)",
-                  display: "flex",
-                  gap: "10px",
-                  alignItems: "center",
-                }}
-              >
-                <input
-                  type="text"
-                  placeholder="Ask a question..."
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  disabled={isLoading}
+              {/* Bottom Actions Form */}
+              {isSessionEnded ? (
+                /* Session Ended Action Button */
+                <div
                   style={{
-                    flex: 1,
-                    padding: "10px 14px",
-                    background: "rgba(255, 255, 255, 0.04)",
-                    border: "1px solid var(--glass-border)",
-                    borderRadius: "14px",
-                    color: "white",
-                    outline: "none",
-                    fontSize: "0.85rem",
-                    transition: "border-color 0.2s",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "var(--accent-primary)")}
-                  onBlur={(e) => (e.target.style.borderColor = "var(--glass-border)")}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !inputValue.trim()}
-                  style={{
-                    background: "var(--accent-gradient)",
-                    color: "white",
-                    border: "none",
-                    width: "36px",
-                    height: "36px",
-                    borderRadius: "10px",
+                    padding: "14px 20px",
+                    borderTop: "1px solid var(--glass-border)",
+                    background: "rgba(255, 255, 255, 0.02)",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    opacity: inputValue.trim() ? 1 : 0.5,
-                    transition: "transform 0.2s",
                   }}
-                  onMouseEnter={(e) => {
-                    if (inputValue.trim()) e.currentTarget.style.transform = "scale(1.05)";
-                  }}
-                  onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
                 >
-                  <Send size={16} />
-                </button>
-              </form>
+                  <button
+                    onClick={startNewChatSession}
+                    className="btn-primary"
+                    style={{
+                      flex: 1,
+                      padding: "12px",
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                      border: "none",
+                    }}
+                  >
+                    Start New Chat
+                  </button>
+                </div>
+              ) : (
+                /* Regular Message Input Form */
+                <form
+                  onSubmit={handleSendMessage}
+                  style={{
+                    padding: "14px 20px",
+                    borderTop: "1px solid var(--glass-border)",
+                    background: "rgba(255, 255, 255, 0.02)",
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Ask a question..."
+                    value={inputValue}
+                    onChange={(e) => {
+                      setInputValue(e.target.value);
+                      resetInactivityTimer();
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid var(--glass-border)",
+                      borderRadius: "14px",
+                      color: "white",
+                      outline: "none",
+                      fontSize: "0.85rem",
+                      transition: "border-color 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "var(--accent-primary)";
+                      resetInactivityTimer();
+                    }}
+                    onBlur={(e) => (e.target.style.borderColor = "var(--glass-border)")}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !inputValue.trim()}
+                    style={{
+                      background: "var(--accent-gradient)",
+                      color: "white",
+                      border: "none",
+                      width: "36px",
+                      height: "36px",
+                      borderRadius: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      opacity: inputValue.trim() ? 1 : 0.5,
+                      transition: "transform 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (inputValue.trim()) e.currentTarget.style.transform = "scale(1.05)";
+                    }}
+                    onMouseLeave={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                  >
+                    <Send size={16} />
+                  </button>
+                </form>
+              )}
             </>
           )}
 
           {/* Footer Remark */}
-          <div style={{
-            textAlign: "center",
-            padding: "8px 0",
-            fontSize: "0.7rem",
-            color: "var(--text-secondary)",
-            background: "rgba(0, 0, 0, 0.15)",
-            borderTop: "1px solid var(--glass-border)",
-            opacity: 0.8
-          }}>
+          <div
+            style={{
+              textAlign: "center",
+              padding: "8px 0",
+              fontSize: "0.7rem",
+              color: "var(--text-secondary)",
+              background: "rgba(0, 0, 0, 0.15)",
+              borderTop: "1px solid var(--glass-border)",
+              opacity: 0.8,
+            }}
+          >
             Built with ❤️ by Creativate Studio
           </div>
         </div>
